@@ -7,6 +7,7 @@ unsigned long iterations;
 unsigned long keyRange;
 double* timeArray;
 double MOPS;
+volatile bool start=false;
 
 struct timespec diff(timespec start, timespec end)
 {
@@ -37,10 +38,15 @@ void *operateOnTree(void* tArgs)
   T = gsl_rng_default;
   r = gsl_rng_alloc(T);
   gsl_rng_set(r,lseed);
+  while(!start)
+  {
+  }
+
   clock_gettime(CLOCK_REALTIME,&s);
   for(int i=0;i<iterations;i++)
   {
-    chooseOperation = gsl_rng_get(r)%100;
+    //chooseOperation = gsl_rng_get(r)%100;
+    chooseOperation = gsl_rng_uniform(r)*100;
     if(chooseOperation < findPercent)
     {
       lookup(tData,gsl_rng_get(r)%keyRange + 1);
@@ -56,6 +62,7 @@ void *operateOnTree(void* tArgs)
   }
   clock_gettime(CLOCK_REALTIME,&e);
   timeArray[threadId] = (double) (diff(s,e).tv_sec * 1000000000 + diff(s,e).tv_nsec)/1000;
+  return NULL;
 }
 
 int main(int argc, char *argv[])
@@ -96,8 +103,7 @@ int main(int argc, char *argv[])
   {
     tArgs[i] = (struct threadArgs*) malloc(sizeof(struct threadArgs));
     tArgs[i]->threadId = i;
-    tArgs[i]->lseed = 1;
-    //tArgs[i]->lseed = gsl_rng_get(r);
+    tArgs[i]->lseed = gsl_rng_get(r);
     tArgs[i]->readCount=0;
     tArgs[i]->successfulReads=0;
     tArgs[i]->unsuccessfulReads=0;
@@ -110,12 +116,15 @@ int main(int argc, char *argv[])
     tArgs[i]->successfulDeletes=0;
     tArgs[i]->unsuccessfulDeletes=0;
     tArgs[i]->deleteRetries=0;
+    tArgs[i]->simpleDeleteCount=0;
+    tArgs[i]->complexDeleteCount=0;
   }
 
   for(int i=0;i<NUM_OF_THREADS;i++)
   {
     pthread_create(&threadArray[i], NULL, operateOnTree, (void*) tArgs[i] );
   }
+  start=true;
   for(int i=0;i<NUM_OF_THREADS;i++)
   {
     pthread_join(threadArray[i], NULL);
@@ -144,6 +153,8 @@ int main(int argc, char *argv[])
   unsigned long totalSuccessfulDeletes=0;
   unsigned long totalUnsuccessfulDeletes=0;
   unsigned long totalDeleteRetries=0;
+  unsigned long totalSimpleDeleteCount=0;
+  unsigned long totalComplexDeleteCount=0;
  
   for(int i=0;i<NUM_OF_THREADS;i++)
   {
@@ -160,16 +171,18 @@ int main(int argc, char *argv[])
     totalSuccessfulDeletes += tArgs[i]->successfulDeletes;
     totalUnsuccessfulDeletes += tArgs[i]->unsuccessfulDeletes;
     totalDeleteRetries += tArgs[i]->deleteRetries;
+    totalSimpleDeleteCount += tArgs[i]->simpleDeleteCount;
+    totalComplexDeleteCount += tArgs[i]->complexDeleteCount;
   }
-  printf("==========================================================================\n");
-  printf("Detailed Stats\n");
-  printf("operation\t     count\tsuccessful    unsuccessful\t   retries\n");
-  printf("Read     \t%10lu\t%10lu\t%10lu\t%10lu\n",totalReadCount,totalSuccessfulReads,totalUnsuccessfulReads,totalReadRetries);
-  printf("Insert   \t%10lu\t%10lu\t%10lu\t%10lu\n",totalInsertCount,totalSuccessfulInserts,totalUnsuccessfulInserts,totalInsertRetries);
-  printf("Delete   \t%10lu\t%10lu\t%10lu\t%10lu\n",totalDeleteCount,totalSuccessfulDeletes,totalUnsuccessfulDeletes,totalDeleteRetries);
+  //printf("==========================================================================\n");
+  //printf("Detailed Stats\n");
+  //printf("operation\t     count\tsuccessful    unsuccessful\t   retries\t % retries\t       simpleDel\t\t complexDel\n");
+  //printf("Read     \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\n",totalReadCount,totalSuccessfulReads,totalUnsuccessfulReads,totalReadRetries,(totalReadRetries * 100.0/totalReadCount));
+  //printf("Insert   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\n",totalInsertCount,totalSuccessfulInserts,totalUnsuccessfulInserts,totalInsertRetries,(totalInsertRetries * 100.0/totalInsertCount));
+  //printf("Delete   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\t%10lu (%.1f)\t%13lu (%.1f)\n",totalDeleteCount,totalSuccessfulDeletes,totalUnsuccessfulDeletes,totalDeleteRetries,(totalDeleteRetries * 100.0/totalDeleteCount),totalSimpleDeleteCount,(totalSimpleDeleteCount*100.0/totalSuccessfulDeletes),totalComplexDeleteCount,(totalComplexDeleteCount*100.0/totalSuccessfulDeletes));
   if(totalReadCount==totalSuccessfulReads+totalUnsuccessfulReads)
   {
-    printf("Read Counters   : OK\n");
+    //printf("Read Counters   : OK\n");
   }
   else
   {
@@ -177,15 +190,15 @@ int main(int argc, char *argv[])
   }
   if(totalInsertCount==totalSuccessfulInserts+totalUnsuccessfulInserts)
   {
-    printf("Insert Counters : OK\n");
+    //printf("Insert Counters : OK\n");
   }
   else
   {
     printf("Insert Counters : FAIL\n");
   }
-  if(totalDeleteCount==totalSuccessfulDeletes+totalUnsuccessfulDeletes)
+  if(totalDeleteCount==totalSuccessfulDeletes+totalUnsuccessfulDeletes && (totalSuccessfulDeletes == totalSimpleDeleteCount + totalComplexDeleteCount))
   {
-    printf("Delete Counters : OK\n");
+    //printf("Delete Counters : OK\n");
   }
   else
   {
@@ -193,12 +206,12 @@ int main(int argc, char *argv[])
   }
   if(initialInsertArgs->successfulInserts + totalSuccessfulInserts - totalSuccessfulDeletes == size())
   {
-    printf("Updates : OK\n");
+    //printf("Updates : OK\n");
   }
   else
   {
     printf("Updates : FAIL \t Diff : %lu\n",(initialInsertArgs->successfulInserts + totalSuccessfulInserts - totalSuccessfulDeletes - size()));
   }
-  printf("==========================================================================\n");
+  //printf("==========================================================================\n");
   pthread_exit(NULL);
 }

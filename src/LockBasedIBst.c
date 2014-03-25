@@ -11,7 +11,7 @@ struct node* grandParentHead=NULL;
 struct node* parentHead=NULL;
 unsigned long numOfNodes;
 
-struct node* newLeafNode(unsigned long key)
+static inline struct node* newLeafNode(unsigned long key)
 {
   struct node* node = (struct node*) malloc(sizeof(struct node));
   node->key = key;
@@ -27,9 +27,8 @@ void createHeadNodes()
   parentHead = grandParentHead->lChild;
 }
 
-bool getLockBit(struct node* p)
+static inline bool getLockBit(struct node* p)
 {
-  //printf("lockbit %lu\t%lu\n",p, (uintptr_t) p & 1);
   return (uintptr_t) p & 1;
 }
 
@@ -37,21 +36,20 @@ bool getLockBit(struct node* p)
 
 static inline struct node* getAddress(struct node* p)
 {
-  //printf("address %lu\t%lu\n",p, (uintptr_t) p & UINTPTR_MAX_XOR_WITH_1);
   return (struct node*)((uintptr_t) p & UINTPTR_MAX_XOR_WITH_1);
 }
 
-struct node* setLockBit(struct node* p)
+static inline struct node* setLockBit(struct node* p)
 {
   return((struct node*) (((uintptr_t) p & UINTPTR_MAX_XOR_WITH_1) | 1));
 }
 
-struct node* unsetLockBit(struct node* p)
+static inline struct node* unsetLockBit(struct node* p)
 {
   return((struct node*) (((uintptr_t) p & UINTPTR_MAX_XOR_WITH_1) | 0));
 }
 
-bool lockLChild(struct node* parent)
+static inline bool lockLChild(struct node* parent)
 {
   struct node* lChild;
   struct node* lockedLChild;
@@ -70,7 +68,7 @@ bool lockLChild(struct node* parent)
   return false;
 }
 
-bool lockRChild(struct node* parent)
+static inline bool lockRChild(struct node* parent)
 {
   struct node* rChild;
   struct node* lockedRChild;
@@ -89,12 +87,12 @@ bool lockRChild(struct node* parent)
   return false;
 }
 
-void unlockLChild(struct node* parent)
+static inline void unlockLChild(struct node* parent)
 {
   parent->lChild = unsetLockBit(parent->lChild);
 }
 
-void unlockRChild(struct node* parent)
+static inline void unlockRChild(struct node* parent)
 {
   parent->rChild = unsetLockBit(parent->rChild);
 }
@@ -287,6 +285,7 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 										printf("Success SD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
 										#endif
                     tData->successfulDeletes++;
+                    tData->simpleDeleteCount++;
 										return(true);
 									}
 									else // 0 1 case
@@ -296,6 +295,7 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 										printf("Success SD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
 										#endif
                     tData->successfulDeletes++;
+                    tData->simpleDeleteCount++;
 										return(true);
 									}
 								}
@@ -308,6 +308,7 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 										printf("Success SD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
 										#endif
                     tData->successfulDeletes++;
+                    tData->simpleDeleteCount++;
 										return(true);
 									}
 									else // 1 1 case
@@ -343,6 +344,7 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 												  	  printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
 												  	  #endif
                               tData->successfulDeletes++;
+                              tData->complexDeleteCount++;
 												  	  return(true);
                             }
                             else
@@ -395,6 +397,7 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 											  	  printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
 											  	  #endif
                             tData->successfulDeletes++;
+                            tData->complexDeleteCount++;
 											  	  return(true);
                           }
                           else
@@ -453,6 +456,7 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 										printf("Success SD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
 										#endif
                     tData->successfulDeletes++;
+                    tData->simpleDeleteCount++;
 										return(true);
 									}
 									else // 0 1 case
@@ -462,6 +466,7 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 										printf("Success SD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
 										#endif
                     tData->successfulDeletes++;
+                    tData->simpleDeleteCount++;
 										return(true);
 									}
 								}
@@ -474,6 +479,7 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 										printf("Success SD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
 										#endif
                     tData->successfulDeletes++;
+                    tData->simpleDeleteCount++;
 										return(true);
 									}
 									else // 1 1 case
@@ -509,6 +515,7 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 											  		  printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
 											  		  #endif
                               tData->successfulDeletes++;
+                              tData->complexDeleteCount++;
 											  		  return(true);
                             }
                             else
@@ -561,6 +568,7 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 											  	  printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
 											  	  #endif
                             tData->successfulDeletes++;
+                            tData->complexDeleteCount++;
 											  	  return(true);
                           }
                           else

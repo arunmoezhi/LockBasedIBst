@@ -31,6 +31,8 @@ struct threadArgs
   unsigned long successfulDeletes;
   unsigned long unsuccessfulDeletes;
   unsigned long deleteRetries;
+  unsigned long simpleDeleteCount;
+  unsigned long complexDeleteCount;
 };
 
 void createHeadNodes();
