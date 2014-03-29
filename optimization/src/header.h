@@ -14,6 +14,13 @@
 #define UINTPTR_MAX_XOR_WITH_3 (uintptr_t) (UINTPTR_MAX ^ 3)
 //#define DEBUG_ON
 
+struct node
+{
+  unsigned long key;
+  tbb::atomic<struct node*> lChild;    //format <address,lockbit>
+  tbb::atomic<struct node*> rChild;    //format <address,lockbit>
+};
+
 struct threadArgs
 {
   int threadId;
@@ -33,6 +40,8 @@ struct threadArgs
   unsigned long deleteRetries;
   unsigned long simpleDeleteCount;
   unsigned long complexDeleteCount;
+  struct node* newNode;
+  bool isNewNodeAvailable;
 };
 
 void createHeadNodes();

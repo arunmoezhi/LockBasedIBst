@@ -78,7 +78,8 @@ int main(int argc, char *argv[])
   keyRange = (unsigned long) pow(2,atoi(argv[6]));
   timeArray = (double*)malloc(NUM_OF_THREADS * sizeof(double));
   tArgs = (struct threadArgs**) malloc(NUM_OF_THREADS * sizeof(struct threadArgs*));
-  unsigned long lseed = 1;
+  unsigned long lseed;
+  lseed = (unsigned long) atol(argv[7]);
   const gsl_rng_type* T;
   gsl_rng* r;
   gsl_rng_env_setup();
@@ -118,6 +119,8 @@ int main(int argc, char *argv[])
     tArgs[i]->deleteRetries=0;
     tArgs[i]->simpleDeleteCount=0;
     tArgs[i]->complexDeleteCount=0;
+    tArgs[i]->newNode=NULL;
+    tArgs[i]->isNewNodeAvailable=false;
   }
 
   for(int i=0;i<NUM_OF_THREADS;i++)
@@ -139,7 +142,7 @@ int main(int argc, char *argv[])
   }
   avgTime = totalTime/NUM_OF_THREADS;
   MOPS = iterations*NUM_OF_THREADS/(avgTime);
-  printf("k%d;%d-%d-%d;%d;%ld;%.2f;%.2f\n",atoi(argv[6]),findPercent,(insertPercent-findPercent),(deletePercent-insertPercent),NUM_OF_THREADS,size(),avgTime/1000,MOPS);
+  printf("k%d;%d-%d-%d;%d;%ld;%.2f\n",atoi(argv[6]),findPercent,(insertPercent-findPercent),(deletePercent-insertPercent),NUM_OF_THREADS,size(),MOPS);
 
   unsigned long totalReadCount=0;
   unsigned long totalSuccessfulReads=0;

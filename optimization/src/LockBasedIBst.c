@@ -1,12 +1,5 @@
 #include"header.h"
 
-struct node
-{
-  unsigned long key;
-  tbb::atomic<struct node*> lChild;    //format <address,lockbit>
-  tbb::atomic<struct node*> rChild;    //format <address,lockbit>
-};
-
 struct node* grandParentHead=NULL;
 struct node* parentHead=NULL;
 unsigned long numOfNodes;
@@ -186,12 +179,24 @@ bool insert(struct threadArgs* tData, unsigned long insertKey)
 
     if(!getLockBit(node)) //If locked restart
     {
-      replaceNode = newLeafNode(insertKey);
+      if(!tData->isNewNodeAvailable)
+      {  
+        tData->newNode = newLeafNode(insertKey);
+        tData->isNewNodeAvailable = true;
+        replaceNode = tData->newNode;
+
+      }
+      else
+      {
+        replaceNode = tData->newNode;
+        replaceNode->key = insertKey;
+      }
 
       if(insertKey < pnode->key) //left case
       {
         if(pnode->lChild.compare_and_swap(replaceNode,node) == node)
         {
+          tData->isNewNodeAvailable = false;
           tData->successfulInserts++;
           #ifdef DEBUG_ON
           printf("Success I%lu\t%lu\n",insertKey,getAddress(parentHead->lChild)->key);
@@ -203,6 +208,7 @@ bool insert(struct threadArgs* tData, unsigned long insertKey)
       {
         if(pnode->rChild.compare_and_swap(replaceNode,node) == node)
         {
+          tData->isNewNodeAvailable = false;
           tData->successfulInserts++;
           #ifdef DEBUG_ON
           printf("Success I%lu\t%lu\n",insertKey,getAddress(parentHead->lChild)->key);
@@ -210,7 +216,7 @@ bool insert(struct threadArgs* tData, unsigned long insertKey)
           return(true);
         }
       }
-      free(replaceNode);
+      //free(replaceNode);
     }
     tData->insertRetries++;
   }
@@ -294,6 +300,8 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 									}
 									else //looked like a simple delete but became complex delete after obtaining locks
 									{
+										unlockLChild(pnode);
+										unlockLChild(node);
 										struct node* rpnode;
 										struct node* rnode;
 										struct node* lcrnode;
@@ -318,8 +326,6 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
                             {
 												  	  node->key = rnode->key;
 												  	  rpnode->lChild = getAddress(rnode->rChild);
-												  	  unlockLChild(pnode);
-												  	  unlockLChild(node);
 												  	  unlockRChild(node);
 												  	  #ifdef DEBUG_ON
 												  	  printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
@@ -330,8 +336,6 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
                             }
                             else
                             {
-												  	  unlockLChild(pnode);
-												  	  unlockLChild(node);
 												  	  unlockRChild(node);
 												  	  unlockLChild(rpnode);
                               unlockLChild(rnode);
@@ -340,8 +344,6 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 												  }
 												  else
 												  {
-												  	unlockLChild(pnode);
-												  	unlockLChild(node);
 												  	unlockRChild(node);
 												  	unlockLChild(rpnode);
                             unlockLChild(rnode);
@@ -349,16 +351,12 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
                         }
                         else
                         {
-												  unlockLChild(pnode);
-												  unlockLChild(node);
 												  unlockRChild(node);
 												  unlockLChild(rpnode);
                         }
 											}
 											else
 											{
-												unlockLChild(pnode);
-												unlockLChild(node);
 												unlockRChild(node);
 											}
 										}
@@ -372,8 +370,6 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
                           {
 											  	  node->key = rnode->key;
 											  	  node->rChild = getAddress(rnode->rChild);
-											  	  unlockLChild(pnode);
-											  	  unlockLChild(node);
 											  	  #ifdef DEBUG_ON
 											  	  printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
 											  	  #endif
@@ -383,8 +379,6 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
                           }
                           else
                           {
-											  	  unlockLChild(pnode);
-											  	  unlockLChild(node);
 											  	  unlockRChild(node);
                             unlockLChild(rnode);
                             unlockRChild(rnode);
@@ -392,16 +386,12 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 											  }
 											  else
 											  {
-											  	unlockLChild(pnode);
-											  	unlockLChild(node);
 											  	unlockRChild(node);
                           unlockLChild(rnode);
 											  }
                       }
                       else
                       {
-											  unlockLChild(pnode);
-											  unlockLChild(node);
 											  unlockRChild(node);
                       }
 										}	
@@ -570,6 +560,8 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 									}
 									else //looked like a simple delete but became complex delete after obtaining locks
 									{
+										unlockRChild(pnode);
+										unlockLChild(node);
 										struct node* rpnode;
 										struct node* rnode;
 										struct node* lcrnode;
@@ -594,8 +586,6 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
                             {
 												  	  node->key = rnode->key;
 												  	  rpnode->lChild = getAddress(rnode->rChild);
-												  	  unlockRChild(pnode);
-												  	  unlockLChild(node);
 												  	  unlockRChild(node);
 												  	  #ifdef DEBUG_ON
 												  	  printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
@@ -606,8 +596,6 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
                             }
                             else
                             {
-												  	  unlockRChild(pnode);
-												  	  unlockLChild(node);
 												  	  unlockRChild(node);
 												  	  unlockLChild(rpnode);
                               unlockLChild(rnode);
@@ -616,8 +604,6 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 												  }
 												  else
 												  {
-												  	unlockRChild(pnode);
-												  	unlockLChild(node);
 												  	unlockRChild(node);
 												  	unlockLChild(rpnode);
                             unlockLChild(rnode);
@@ -625,16 +611,12 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
                         }
                         else
                         {
-												  unlockRChild(pnode);
-												  unlockLChild(node);
 												  unlockRChild(node);
 												  unlockLChild(rpnode);
                         }
 											}
 											else
 											{
-												unlockRChild(pnode);
-												unlockLChild(node);
 												unlockRChild(node);
 											}
 										}
@@ -648,8 +630,6 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
                           {
 											  	  node->key = rnode->key;
 											  	  node->rChild = getAddress(rnode->rChild);
-											  	  unlockRChild(pnode);
-											  	  unlockLChild(node);
 											  	  #ifdef DEBUG_ON
 											  	  printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
 											  	  #endif
@@ -659,8 +639,6 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
                           }
                           else
                           {
-											  	  unlockRChild(pnode);
-											  	  unlockLChild(node);
 											  	  unlockRChild(node);
                             unlockLChild(rnode);
                             unlockRChild(rnode);
@@ -668,16 +646,12 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 											  }
 											  else
 											  {
-											  	unlockRChild(pnode);
-											  	unlockLChild(node);
 											  	unlockRChild(node);
                           unlockLChild(rnode);
 											  }
                       }
                       else
                       {
-											  unlockRChild(pnode);
-											  unlockLChild(node);
 											  unlockRChild(node);
                       }
 										}	
