@@ -50,3 +50,4 @@ bool insert(struct threadArgs*, unsigned long);
 bool remove(struct threadArgs*, unsigned long);
 unsigned long size();
 void printKeys();
+bool isValidTree();

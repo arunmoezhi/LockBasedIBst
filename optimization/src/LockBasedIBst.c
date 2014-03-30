@@ -80,6 +80,23 @@ static inline bool lockRChild(struct node* parent)
   return false;
 }
 
+static inline bool lockRChildSpl(struct node* parent, struct node* rChild)
+{
+  struct node* lockedRChild;
+
+  if(getLockBit(rChild))
+  {
+    return false;
+  }
+  lockedRChild = setLockBit(rChild);
+
+  if(parent->rChild.compare_and_swap(lockedRChild,rChild) == rChild)
+  {
+    return true;
+  }
+  return false;
+}
+
 static inline void unlockLChild(struct node* parent)
 {
   parent->lChild = unsetLockBit(parent->lChild);
@@ -411,69 +428,24 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 					}
 					else //possible complex delete. 
 					{
-						if(lockRChild(node)) //lock only the rChild of node.
+						struct node* nRChild = node->rChild;
+						if(getAddress(nRChild) != NULL) //validate if rChild is still non-NULL
 						{
-							if(getAddress(node->rChild) != NULL) //validate if rChild is still non-NULL
+							struct node* rpnode;
+							struct node* rnode;
+							struct node* lcrnode;
+							rpnode = node;
+							rnode = getAddress(nRChild);
+							lcrnode = getAddress(rnode->lChild);
+							if(lcrnode != NULL)
 							{
-								struct node* rpnode;
-								struct node* rnode;
-								struct node* lcrnode;
-								rpnode = node;
-								rnode = getAddress(node->rChild);
-								lcrnode = getAddress(rnode->lChild);
-								if(lcrnode != NULL)
+								while(lcrnode != NULL)
 								{
-									while(lcrnode != NULL)
-									{
-										rpnode = rnode;
-										rnode = lcrnode;
-										lcrnode = getAddress(lcrnode->lChild);
-									}
-									if(lockLChild(rpnode))
-									{
-                    if(lockLChild(rnode))
-                    {
-										  if(lockRChild(rnode))
-										  {
-                        if(getAddress(rnode->lChild) == NULL)
-                        {
-										  	  node->key = rnode->key;
-										  	  rpnode->lChild = getAddress(rnode->rChild);
-										  	  unlockRChild(node);
-										  	  #ifdef DEBUG_ON
-										  	  printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
-										  	  #endif
-                          tData->successfulDeletes++;
-                          tData->complexDeleteCount++;
-										  	  return(true);
-                        }
-                        else
-                        {
-										  	  unlockRChild(node);
-										  	  unlockLChild(rpnode);
-                          unlockLChild(rnode);
-                          unlockRChild(rnode);  
-                        }
-										  }
-										  else
-										  {
-										  	unlockRChild(node);
-										  	unlockLChild(rpnode);
-                        unlockLChild(rnode);
-										  }
-                    }
-                    else
-                    {
-										  unlockRChild(node);
-										  unlockLChild(rpnode);
-                    }
-									}
-									else
-									{
-										unlockRChild(node);
-									}
+									rpnode = rnode;
+									rnode = lcrnode;
+									lcrnode = getAddress(lcrnode->lChild);
 								}
-								else
+								if(lockLChild(rpnode))
 								{
                   if(lockLChild(rnode))
                   {
@@ -481,39 +453,89 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 									  {
                       if(getAddress(rnode->lChild) == NULL)
                       {
-									  	  node->key = rnode->key;
-									  	  node->rChild = getAddress(rnode->rChild);
-									  	  #ifdef DEBUG_ON
-									  	  printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
-									  	  #endif
-                        tData->successfulDeletes++;
-                        tData->complexDeleteCount++;
-									  	  return(true);
+												if(lockRChildSpl(node,nRChild))
+												{
+													node->key = rnode->key;
+													rpnode->lChild = getAddress(rnode->rChild);
+													unlockRChild(node);
+													#ifdef DEBUG_ON
+													printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
+													#endif
+													tData->successfulDeletes++;
+													tData->complexDeleteCount++;
+													return(true);
+												}
+												else
+												{
+													unlockLChild(rpnode);
+													unlockLChild(rnode);
+													unlockRChild(rnode);
+												}
                       }
                       else
                       {
-									  	  unlockRChild(node);
+									  	  unlockLChild(rpnode);
                         unlockLChild(rnode);
-                        unlockRChild(rnode);
+                        unlockRChild(rnode);  
                       }
 									  }
 									  else
 									  {
-									  	unlockRChild(node);
+									  	unlockLChild(rpnode);
                       unlockLChild(rnode);
 									  }
                   }
                   else
                   {
-									  unlockRChild(node);
+									  unlockLChild(rpnode);
                   }
 								}
 							}
-							else //rChild has become NULL. So it becomes a simple delete. Obtain locks on parent and left child
+							else
 							{
-								if(lockLChild(pnode))
+                if(lockLChild(rnode))
+                {
+								  if(lockRChild(rnode))
+								  {
+                    if(getAddress(rnode->lChild) == NULL)
+                    {
+											if(lockRChildSpl(node,nRChild))
+											{
+												node->key = rnode->key;
+												node->rChild = getAddress(rnode->rChild);
+												#ifdef DEBUG_ON
+												printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
+												#endif
+												tData->successfulDeletes++;
+												tData->complexDeleteCount++;
+												return(true);
+											}
+											else
+											{
+												unlockLChild(rnode);
+												unlockRChild(rnode);
+											}
+                    }
+                    else
+                    {
+                      unlockLChild(rnode);
+                      unlockRChild(rnode);
+                    }
+								  }
+								  else
+								  {
+                    unlockLChild(rnode);
+								  }
+                }
+							}
+						}
+						else //rChild has become NULL. So it becomes a simple delete. Obtain locks on parent and left child
+						{
+							if(lockLChild(pnode))
+							{
+								if(lockLChild(node))
 								{
-									if(lockLChild(node))
+									if(lockRChildSpl(node,NULL))
 									{
 										pnode->lChild = getAddress(node->lChild);
 										tData->successfulDeletes++;
@@ -522,13 +544,13 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 									}
 									else
 									{
-										unlockRChild(node);
 										unlockLChild(pnode);
+										unlockLChild(node);
 									}
 								}
 								else
 								{
-									unlockRChild(node);
+									unlockLChild(pnode);
 								}
 							}
 						}
@@ -671,69 +693,24 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 					}
 					else //possible complex delete. 
 					{
-						if(lockRChild(node)) //lock only the rChild of node.
+						struct node* nRChild = node->rChild;
+						if(getAddress(nRChild) != NULL) //validate if rChild is still non-NULL
 						{
-							if(getAddress(node->rChild) != NULL) //validate if rChild is still non-NULL
+							struct node* rpnode;
+							struct node* rnode;
+							struct node* lcrnode;
+							rpnode = node;
+							rnode = getAddress(nRChild);
+							lcrnode = getAddress(rnode->lChild);
+							if(lcrnode != NULL)
 							{
-								struct node* rpnode;
-								struct node* rnode;
-								struct node* lcrnode;
-								rpnode = node;
-								rnode = getAddress(node->rChild);
-								lcrnode = getAddress(rnode->lChild);
-								if(lcrnode != NULL)
+								while(lcrnode != NULL)
 								{
-									while(lcrnode != NULL)
-									{
-										rpnode = rnode;
-										rnode = lcrnode;
-										lcrnode = getAddress(lcrnode->lChild);
-									}
-									if(lockLChild(rpnode))
-									{
-                    if(lockLChild(rnode))
-                    {
-										  if(lockRChild(rnode))
-										  {
-                        if(getAddress(rnode->lChild) == NULL)
-                        {
-										  	  node->key = rnode->key;
-										  	  rpnode->lChild = getAddress(rnode->rChild);
-										  	  unlockRChild(node);
-										  	  #ifdef DEBUG_ON
-										  	  printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
-										  	  #endif
-                          tData->successfulDeletes++;
-                          tData->complexDeleteCount++;
-										  	  return(true);
-                        }
-                        else
-                        {
-										  	  unlockRChild(node);
-										  	  unlockLChild(rpnode);
-                          unlockLChild(rnode);
-                          unlockRChild(rnode);  
-                        }
-										  }
-										  else
-										  {
-										  	unlockRChild(node);
-										  	unlockLChild(rpnode);
-                        unlockLChild(rnode);
-										  }
-                    }
-                    else
-                    {
-										  unlockRChild(node);
-										  unlockLChild(rpnode);
-                    }
-									}
-									else
-									{
-										unlockRChild(node);
-									}
+									rpnode = rnode;
+									rnode = lcrnode;
+									lcrnode = getAddress(lcrnode->lChild);
 								}
-								else
+								if(lockLChild(rpnode))
 								{
                   if(lockLChild(rnode))
                   {
@@ -741,39 +718,89 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 									  {
                       if(getAddress(rnode->lChild) == NULL)
                       {
-									  	  node->key = rnode->key;
-									  	  node->rChild = getAddress(rnode->rChild);
-									  	  #ifdef DEBUG_ON
-									  	  printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
-									  	  #endif
-                        tData->successfulDeletes++;
-                        tData->complexDeleteCount++;
-									  	  return(true);
+												if(lockRChildSpl(node,nRChild))
+												{
+													node->key = rnode->key;
+													rpnode->lChild = getAddress(rnode->rChild);
+													unlockRChild(node);
+													#ifdef DEBUG_ON
+													printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
+													#endif
+													tData->successfulDeletes++;
+													tData->complexDeleteCount++;
+													return(true);
+												}
+												else
+												{
+													unlockLChild(rpnode);
+													unlockLChild(rnode);
+													unlockRChild(rnode);
+												}
                       }
                       else
                       {
-									  	  unlockRChild(node);
+									  	  unlockLChild(rpnode);
                         unlockLChild(rnode);
-                        unlockRChild(rnode);
+                        unlockRChild(rnode);  
                       }
 									  }
 									  else
 									  {
-									  	unlockRChild(node);
+									  	unlockLChild(rpnode);
                       unlockLChild(rnode);
 									  }
                   }
                   else
                   {
-									  unlockRChild(node);
+									  unlockLChild(rpnode);
                   }
 								}
 							}
-							else //rChild has become NULL. So it becomes a simple delete. Obtain locks on parent and left child
+							else
 							{
-								if(lockRChild(pnode))
+                if(lockLChild(rnode))
+                {
+								  if(lockRChild(rnode))
+								  {
+                    if(getAddress(rnode->lChild) == NULL)
+                    {
+											if(lockRChildSpl(node,nRChild))
+											{
+												node->key = rnode->key;
+												node->rChild = getAddress(rnode->rChild);
+												#ifdef DEBUG_ON
+												printf("Success CD%lu\t%lu\n",deleteKey,getAddress(parentHead->lChild)->key);
+												#endif
+												tData->successfulDeletes++;
+												tData->complexDeleteCount++;
+												return(true);
+											}
+											else
+											{
+												unlockLChild(rnode);
+												unlockRChild(rnode);
+											}
+                    }
+                    else
+                    {
+                      unlockLChild(rnode);
+                      unlockRChild(rnode);
+                    }
+								  }
+								  else
+								  {
+                    unlockLChild(rnode);
+								  }
+                }
+							}
+						}
+						else //rChild has become NULL. So it becomes a simple delete. Obtain locks on parent and left child
+						{
+							if(lockRChild(pnode))
+							{
+								if(lockLChild(node))
 								{
-									if(lockLChild(node))
+									if(lockRChildSpl(node,NULL))
 									{
 										pnode->rChild = getAddress(node->lChild);
 										tData->successfulDeletes++;
@@ -782,13 +809,13 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 									}
 									else
 									{
-										unlockRChild(node);
 										unlockRChild(pnode);
+										unlockLChild(node);
 									}
 								}
 								else
 								{
-									unlockRChild(node);
+									unlockRChild(pnode);
 								}
 							}
 						}
@@ -850,5 +877,23 @@ void printKeys()
 {
   printKeysInOrder(parentHead);
   printf("\n");
+}
+
+bool isValidBST(struct node* node, long min, long max)
+{
+  if(node == NULL)
+  {
+    return true;
+  }
+  if(node->key > min && node->key < max && isValidBST(node->lChild,min,node->key) && isValidBST(node->rChild,node->key,max))
+  {
+    return true;
+  }
+  return false;
+}
+
+bool isValidTree()
+{
+  return(isValidBST(parentHead->lChild,0,ULONG_MAX));
 }
 

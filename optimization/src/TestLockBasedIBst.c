@@ -216,5 +216,9 @@ int main(int argc, char *argv[])
     printf("Updates : FAIL \t Diff : %lu\n",(initialInsertArgs->successfulInserts + totalSuccessfulInserts - totalSuccessfulDeletes - size()));
   }
   //printf("==========================================================================\n");
+  if(!isValidTree())
+  {
+    printf("invalid Tree\n");
+  }
   pthread_exit(NULL);
 }
