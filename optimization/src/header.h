@@ -2,23 +2,19 @@
 #include<pthread.h>
 #include<stdlib.h>
 #include<stdbool.h>
-#include<limits.h>
 #include<math.h>
 #include<time.h>
-#define __STDC_LIMIT_MACROS
 #include<stdint.h>
 #include<tbb/atomic.h>
 #include<gsl/gsl_rng.h>
 #include<gsl/gsl_randist.h>
-#define UINTPTR_MAX_XOR_WITH_1 (uintptr_t) (UINTPTR_MAX ^ 1)
-#define UINTPTR_MAX_XOR_WITH_3 (uintptr_t) (UINTPTR_MAX ^ 3)
-//#define DEBUG_ON
+#include<assert.h>
 
 struct node
 {
   unsigned long key;
-  tbb::atomic<struct node*> lChild;    //format <address,lockbit>
-  tbb::atomic<struct node*> rChild;    //format <address,lockbit>
+  tbb::atomic<struct node*> lChild;    //format <address, nullbit, lockbit>
+  tbb::atomic<struct node*> rChild;    //format <address, nullbit, lockbit>
 };
 
 struct threadArgs

@@ -43,7 +43,7 @@ void *operateOnTree(void* tArgs)
   }
 
   clock_gettime(CLOCK_REALTIME,&s);
-  for(int i=0;i<iterations;i++)
+  for(int i=0;i< (int)iterations;i++)
   {
     //chooseOperation = gsl_rng_get(r)%100;
     chooseOperation = gsl_rng_uniform(r)*100;
@@ -177,12 +177,12 @@ int main(int argc, char *argv[])
     totalSimpleDeleteCount += tArgs[i]->simpleDeleteCount;
     totalComplexDeleteCount += tArgs[i]->complexDeleteCount;
   }
-  //printf("==========================================================================\n");
-  //printf("Detailed Stats\n");
-  //printf("operation\t     count\tsuccessful    unsuccessful\t   retries\t % retries\t       simpleDel\t\t complexDel\n");
-  //printf("Read     \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\n",totalReadCount,totalSuccessfulReads,totalUnsuccessfulReads,totalReadRetries,(totalReadRetries * 100.0/totalReadCount));
-  //printf("Insert   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\n",totalInsertCount,totalSuccessfulInserts,totalUnsuccessfulInserts,totalInsertRetries,(totalInsertRetries * 100.0/totalInsertCount));
-  //printf("Delete   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\t%10lu (%.1f)\t%13lu (%.1f)\n",totalDeleteCount,totalSuccessfulDeletes,totalUnsuccessfulDeletes,totalDeleteRetries,(totalDeleteRetries * 100.0/totalDeleteCount),totalSimpleDeleteCount,(totalSimpleDeleteCount*100.0/totalSuccessfulDeletes),totalComplexDeleteCount,(totalComplexDeleteCount*100.0/totalSuccessfulDeletes));
+  printf("==========================================================================\n");
+  printf("Detailed Stats\n");
+  printf("operation\t     count\tsuccessful    unsuccessful\t   retries\t %% retries\t       simpleDel\t\t complexDel\n");
+  printf("Read     \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\n",totalReadCount,totalSuccessfulReads,totalUnsuccessfulReads,totalReadRetries,(totalReadRetries * 100.0/totalReadCount));
+  printf("Insert   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\n",totalInsertCount,totalSuccessfulInserts,totalUnsuccessfulInserts,totalInsertRetries,(totalInsertRetries * 100.0/totalInsertCount));
+  printf("Delete   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\t%10lu (%.1f)\t%13lu (%.1f)\n",totalDeleteCount,totalSuccessfulDeletes,totalUnsuccessfulDeletes,totalDeleteRetries,(totalDeleteRetries * 100.0/totalDeleteCount),totalSimpleDeleteCount,(totalSimpleDeleteCount*100.0/totalSuccessfulDeletes),totalComplexDeleteCount,(totalComplexDeleteCount*100.0/totalSuccessfulDeletes));
   if(totalReadCount==totalSuccessfulReads+totalUnsuccessfulReads)
   {
     //printf("Read Counters   : OK\n");
@@ -219,6 +219,11 @@ int main(int argc, char *argv[])
   if(!isValidTree())
   {
     printf("invalid Tree\n");
+		printf("Detailed Stats\n");
+		printf("operation\t     count\tsuccessful    unsuccessful\t   retries\t %% retries\t       simpleDel\t\t complexDel\n");
+		printf("Read     \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\n",totalReadCount,totalSuccessfulReads,totalUnsuccessfulReads,totalReadRetries,(totalReadRetries * 100.0/totalReadCount));
+		printf("Insert   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\n",totalInsertCount,totalSuccessfulInserts,totalUnsuccessfulInserts,totalInsertRetries,(totalInsertRetries * 100.0/totalInsertCount));
+		printf("Delete   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\t%10lu (%.1f)\t%13lu (%.1f)\n",totalDeleteCount,totalSuccessfulDeletes,totalUnsuccessfulDeletes,totalDeleteRetries,(totalDeleteRetries * 100.0/totalDeleteCount),totalSimpleDeleteCount,(totalSimpleDeleteCount*100.0/totalSuccessfulDeletes),totalComplexDeleteCount,(totalComplexDeleteCount*100.0/totalSuccessfulDeletes));
   }
   pthread_exit(NULL);
 }
