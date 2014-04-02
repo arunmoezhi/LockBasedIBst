@@ -9,7 +9,7 @@ double* timeArray;
 double MOPS;
 volatile bool start=false;
 
-struct timespec diff(timespec start, timespec end)
+struct timespec diff(timespec start, timespec end) //get difference in time in nano seconds
 {
 	struct timespec temp;
 	if ((end.tv_nsec-start.tv_nsec)<0) 
@@ -45,7 +45,6 @@ void *operateOnTree(void* tArgs)
   clock_gettime(CLOCK_REALTIME,&s);
   for(int i=0;i< (int)iterations;i++)
   {
-    //chooseOperation = gsl_rng_get(r)%100;
     chooseOperation = gsl_rng_uniform(r)*100;
     if(chooseOperation < findPercent)
     {
@@ -70,35 +69,35 @@ int main(int argc, char *argv[])
   struct threadArgs** tArgs;
   double totalTime=0;
   double avgTime=0;
+	unsigned long lseed;
+	//get run configuration from command line
   NUM_OF_THREADS = atoi(argv[1]);
   findPercent = atoi(argv[2]);
   insertPercent= findPercent + atoi(argv[3]);
   deletePercent = insertPercent + atoi(argv[4]);
   iterations = (unsigned long) pow(2,atoi(argv[5]));
   keyRange = (unsigned long) pow(2,atoi(argv[6]));
+	lseed = (unsigned long) atol(argv[7]);
+	
   timeArray = (double*)malloc(NUM_OF_THREADS * sizeof(double));
-  tArgs = (struct threadArgs**) malloc(NUM_OF_THREADS * sizeof(struct threadArgs*));
-  unsigned long lseed;
-  lseed = (unsigned long) atol(argv[7]);
+  tArgs = (struct threadArgs**) malloc(NUM_OF_THREADS * sizeof(struct threadArgs*)); 
+
   const gsl_rng_type* T;
   gsl_rng* r;
   gsl_rng_env_setup();
   T = gsl_rng_default;
   r = gsl_rng_alloc(T);
   gsl_rng_set(r,lseed);
-  createHeadNodes();
+	
+  createHeadNodes(); //Initialize the tree. Must be called before doing any operations on the tree
   
   struct threadArgs* initialInsertArgs = (struct threadArgs*) malloc(sizeof(struct threadArgs));
   initialInsertArgs->successfulInserts=0;
-  while(initialInsertArgs->successfulInserts < keyRange/2)
+  while(initialInsertArgs->successfulInserts < keyRange/2) //populate the tree with 50% of keys
   {
     insert(initialInsertArgs,gsl_rng_get(r)%keyRange + 1);
   }
 
-  #ifdef DEBUG_ON
-  printKeys();
-  printf("Initial Size: %lu\n",size());
-  #endif
   pthread_t threadArray[NUM_OF_THREADS];
   for(int i=0;i<NUM_OF_THREADS;i++)
   {
@@ -127,15 +126,11 @@ int main(int argc, char *argv[])
   {
     pthread_create(&threadArray[i], NULL, operateOnTree, (void*) tArgs[i] );
   }
-  start=true;
+  start=true; //start operations
   for(int i=0;i<NUM_OF_THREADS;i++)
   {
     pthread_join(threadArray[i], NULL);
   }
-  #ifdef DEBUG_ON
-  printf("Final Size: %lu\n",size());
-  printKeys();
-  #endif
   for(int i=0;i<NUM_OF_THREADS;i++)
   {
     totalTime += timeArray[i];
@@ -177,53 +172,20 @@ int main(int argc, char *argv[])
     totalSimpleDeleteCount += tArgs[i]->simpleDeleteCount;
     totalComplexDeleteCount += tArgs[i]->complexDeleteCount;
   }
+	#ifdef STATS_ON
   printf("==========================================================================\n");
   printf("Detailed Stats\n");
   printf("operation\t     count\tsuccessful    unsuccessful\t   retries\t %% retries\t       simpleDel\t\t complexDel\n");
   printf("Read     \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\n",totalReadCount,totalSuccessfulReads,totalUnsuccessfulReads,totalReadRetries,(totalReadRetries * 100.0/totalReadCount));
   printf("Insert   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\n",totalInsertCount,totalSuccessfulInserts,totalUnsuccessfulInserts,totalInsertRetries,(totalInsertRetries * 100.0/totalInsertCount));
   printf("Delete   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\t%10lu (%.1f)\t%13lu (%.1f)\n",totalDeleteCount,totalSuccessfulDeletes,totalUnsuccessfulDeletes,totalDeleteRetries,(totalDeleteRetries * 100.0/totalDeleteCount),totalSimpleDeleteCount,(totalSimpleDeleteCount*100.0/totalSuccessfulDeletes),totalComplexDeleteCount,(totalComplexDeleteCount*100.0/totalSuccessfulDeletes));
-  if(totalReadCount==totalSuccessfulReads+totalUnsuccessfulReads)
-  {
-    //printf("Read Counters   : OK\n");
-  }
-  else
-  {
-    printf("Reads Counters  : FAIL\n");
-  }
-  if(totalInsertCount==totalSuccessfulInserts+totalUnsuccessfulInserts)
-  {
-    //printf("Insert Counters : OK\n");
-  }
-  else
-  {
-    printf("Insert Counters : FAIL\n");
-  }
-  if(totalDeleteCount==totalSuccessfulDeletes+totalUnsuccessfulDeletes && (totalSuccessfulDeletes == totalSimpleDeleteCount + totalComplexDeleteCount))
-  {
-    //printf("Delete Counters : OK\n");
-  }
-  else
-  {
-    printf("Delete Counters: FAIL\n");
-  }
-  if(initialInsertArgs->successfulInserts + totalSuccessfulInserts - totalSuccessfulDeletes == size())
-  {
-    //printf("Updates : OK\n");
-  }
-  else
-  {
-    printf("Updates : FAIL \t Diff : %lu\n",(initialInsertArgs->successfulInserts + totalSuccessfulInserts - totalSuccessfulDeletes - size()));
-  }
-  //printf("==========================================================================\n");
-  if(!isValidTree())
-  {
-    printf("invalid Tree\n");
-		printf("Detailed Stats\n");
-		printf("operation\t     count\tsuccessful    unsuccessful\t   retries\t %% retries\t       simpleDel\t\t complexDel\n");
-		printf("Read     \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\n",totalReadCount,totalSuccessfulReads,totalUnsuccessfulReads,totalReadRetries,(totalReadRetries * 100.0/totalReadCount));
-		printf("Insert   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\n",totalInsertCount,totalSuccessfulInserts,totalUnsuccessfulInserts,totalInsertRetries,(totalInsertRetries * 100.0/totalInsertCount));
-		printf("Delete   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\t%10lu (%.1f)\t%13lu (%.1f)\n",totalDeleteCount,totalSuccessfulDeletes,totalUnsuccessfulDeletes,totalDeleteRetries,(totalDeleteRetries * 100.0/totalDeleteCount),totalSimpleDeleteCount,(totalSimpleDeleteCount*100.0/totalSuccessfulDeletes),totalComplexDeleteCount,(totalComplexDeleteCount*100.0/totalSuccessfulDeletes));
-  }
-  pthread_exit(NULL);
+ 	printf("==========================================================================\n");
+	#endif
+	assert(isValidTree());
+	assert(totalReadCount==totalSuccessfulReads+totalUnsuccessfulReads);
+	assert(totalInsertCount==totalSuccessfulInserts+totalUnsuccessfulInserts);
+  assert(totalDeleteCount==totalSuccessfulDeletes+totalUnsuccessfulDeletes && (totalSuccessfulDeletes == totalSimpleDeleteCount + totalComplexDeleteCount));
+  assert(initialInsertArgs->successfulInserts + totalSuccessfulInserts - totalSuccessfulDeletes == size());
+  
+	pthread_exit(NULL);
 }

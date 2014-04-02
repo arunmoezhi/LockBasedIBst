@@ -1,5 +1,4 @@
 #include"header.h"
-#define MAX_ADDRESS 0xFFFFFFFFFFFF
 struct node* grandParentHead=NULL;
 struct node* parentHead=NULL;
 unsigned long numOfNodes;
@@ -22,52 +21,40 @@ void createHeadNodes()
 
 static inline struct node* getAddress(struct node* p)
 {
-	assert (p < (struct node*) MAX_ADDRESS);
 	return (struct node*)((uintptr_t) p & ~((uintptr_t) 3));
 }
 
 static inline bool isNull(struct node* p)
 {
-		assert (p < (struct node*) MAX_ADDRESS);
-
 	if( getAddress(p) == NULL)
 	{
 		return true;
 	}
-	return ((uintptr_t) p & 0x2) != 0;
+	return ((uintptr_t) p & 2) != 0;
 }
 
 static inline bool getLockBit(struct node* p)
 {
-	return ((uintptr_t) p & 0x1) != 0;
+	return ((uintptr_t) p & 1) != 0;
 }
 
 static inline struct node* setLockBit(struct node* p)
 {
-			assert ((struct node*) ((uintptr_t) p | 1) < (struct node*) MAX_ADDRESS);
-
 	return (struct node*) ((uintptr_t) p | 1);
 }
 
 static inline struct node* unsetLockBit(struct node* p)
 {
-			assert ((struct node*) ((uintptr_t) p & ~((uintptr_t) 1)) < (struct node*) MAX_ADDRESS);
-
 	return (struct node*) ((uintptr_t) p & ~((uintptr_t) 1));
 }
 
 static inline struct node* setNullBit(struct node* p)
 {
-			assert ((struct node*) ((uintptr_t) p | 2) < (struct node*) MAX_ADDRESS);
-
 	return (struct node*) ((uintptr_t) p | 2);
 }
 
 static inline bool lockEdge(struct node* parent, struct node* child, bool isLeftChild)
 {
-	assert (parent < (struct node*) MAX_ADDRESS);
-	assert (child < (struct node*) MAX_ADDRESS);
-
   struct node* lockedChild;
 	parent = getAddress(parent);
 
@@ -76,7 +63,6 @@ static inline bool lockEdge(struct node* parent, struct node* child, bool isLeft
     return false;
   }
   lockedChild = setLockBit(child);
-	assert (lockedChild < (struct node*) MAX_ADDRESS);
   if(isLeftChild)
   {
     if(parent->lChild.compare_and_swap(lockedChild,child) == child)
@@ -97,13 +83,11 @@ static inline bool lockEdge(struct node* parent, struct node* child, bool isLeft
 static inline void unlockLChild(struct node* parent)
 {
   getAddress(parent)->lChild = unsetLockBit(getAddress(parent)->lChild);
-	assert (getAddress(parent)->lChild < (struct node*) MAX_ADDRESS);
 }
 
 static inline void unlockRChild(struct node* parent)
 {
   getAddress(parent)->rChild = unsetLockBit(getAddress(parent)->rChild);
-	assert (getAddress(parent)->rChild < (struct node*) MAX_ADDRESS);	
 }
 
 unsigned long lookup(struct threadArgs* tData, unsigned long target)
@@ -194,7 +178,7 @@ bool insert(struct threadArgs* tData, unsigned long insertKey)
 
     if(!getLockBit(node)) //If locked restart
     {
-      if(!tData->isNewNodeAvailable)
+      if(!tData->isNewNodeAvailable) //reuse nodes
       {  
         tData->newNode = newLeafNode(insertKey);
         tData->isNewNodeAvailable = true;
@@ -210,9 +194,6 @@ bool insert(struct threadArgs* tData, unsigned long insertKey)
       {
         if(pnode->lChild.compare_and_swap(replaceNode,node) == node)
         {
-					assert (node < (struct node*) MAX_ADDRESS);
-					assert (isNull(node));
-
           tData->isNewNodeAvailable = false;
           tData->successfulInserts++;
           return(true);
@@ -222,8 +203,6 @@ bool insert(struct threadArgs* tData, unsigned long insertKey)
       {
         if(pnode->rChild.compare_and_swap(replaceNode,node) == node)
         {
-					assert (node < (struct node*) MAX_ADDRESS);
-					assert (isNull(node));
           tData->isNewNodeAvailable = false;
           tData->successfulInserts++;
           return(true);
@@ -312,11 +291,7 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 										if(isNull(nrChild)) //00 case
 										{
 											pnode->lChild = setNullBit(pnode->lChild);
-											assert(getLockBit(pnode->lChild));
-											//assert(isNull(pnode->lChild));
-											//assert(getLockBit(pnode->lChild));
 											unlockLChild(pnode);
-											assert (pnode->lChild < (struct node*) MAX_ADDRESS);
 											tData->successfulDeletes++;
 											tData->simpleDeleteCount++;
 											return(true);
@@ -324,7 +299,6 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 										else //01 case
 										{
 											pnode->lChild = getAddress(nrChild);
-											assert (pnode->lChild < (struct node*) MAX_ADDRESS);
 											tData->successfulDeletes++;
 											tData->simpleDeleteCount++;
 											return(true);
@@ -360,7 +334,6 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 									if(getAddress(node)->key == deleteKey)
 									{
 										pnode->lChild = getAddress(nlChild);
-										assert (pnode->lChild < (struct node*) MAX_ADDRESS);
 										tData->successfulDeletes++;
 										tData->simpleDeleteCount++;
 										return(true);	
@@ -417,7 +390,6 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
 												if(isNull(rcrnode))
 												{
 													getAddress(rpnode)->lChild = setNullBit(getAddress(rpnode)->lChild);
-													//assert(isNull(getAddress(rpnode)->lChild));
 													unlockLChild(rpnode);
 												}
 												else

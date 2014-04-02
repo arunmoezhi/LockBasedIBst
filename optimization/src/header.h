@@ -9,6 +9,7 @@
 #include<gsl/gsl_rng.h>
 #include<gsl/gsl_randist.h>
 #include<assert.h>
+//#define STATS_ON
 
 struct node
 {
@@ -21,7 +22,6 @@ struct threadArgs
 {
   int threadId;
   unsigned long lseed;
-  unsigned int iseed;
   unsigned long readCount;
   unsigned long successfulReads;
   unsigned long unsuccessfulReads;
