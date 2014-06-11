@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
   printf("Insert   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\n",totalInsertCount,totalSuccessfulInserts,totalUnsuccessfulInserts,totalInsertRetries,(totalInsertRetries * 100.0/totalInsertCount));
   printf("Delete   \t%10lu\t%10lu\t%10lu\t%10lu\t%10.1f\t%10lu (%.1f)\t%13lu (%.1f)\n",totalDeleteCount,totalSuccessfulDeletes,totalUnsuccessfulDeletes,totalDeleteRetries,(totalDeleteRetries * 100.0/totalDeleteCount),totalSimpleDeleteCount,(totalSimpleDeleteCount*100.0/totalSuccessfulDeletes),totalComplexDeleteCount,(totalComplexDeleteCount*100.0/totalSuccessfulDeletes));
  	printf("==========================================================================\n");
-	#endif
+	#endif 
 	assert(isValidTree());
 	assert(totalReadCount==totalSuccessfulReads+totalUnsuccessfulReads);
 	assert(totalInsertCount==totalSuccessfulInserts+totalUnsuccessfulInserts);

@@ -101,7 +101,7 @@ unsigned long lookup(struct threadArgs* tData, unsigned long target)
     node = grandParentHead;
     lastRightKey = node->key;
     lastRightNode = node;
-    while( !isNull(node) ) //Loop until a child of a leaf node which is null is reached
+    while( !isNull(node) ) //Loop until a child of a leaf node which is null is reached 
     {
 			node = getAddress(node);
       if(target < node->key)
