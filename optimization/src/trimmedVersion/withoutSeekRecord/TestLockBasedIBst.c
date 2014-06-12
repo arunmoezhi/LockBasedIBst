@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
   initialInsertArgs->successfulInserts=0;
 	initialInsertArgs->newNode=NULL;
   initialInsertArgs->isNewNodeAvailable=false;
-	initialInsertArgs->mySeekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
+	//initialInsertArgs->mySeekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
   while(initialInsertArgs->successfulInserts < keyRange/2) //populate the tree with 50% of keys
   {
     insert(initialInsertArgs,gsl_rng_get(r)%keyRange + 1);
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
     tArgs[i]->complexDeleteCount=0;
     tArgs[i]->newNode=NULL;
     tArgs[i]->isNewNodeAvailable=false;
-		tArgs[i]->mySeekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
+		//tArgs[i]->mySeekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
   }
 
   for(int i=0;i<NUM_OF_THREADS;i++)

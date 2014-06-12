@@ -47,8 +47,8 @@ struct tArgs
   unsigned long complexDeleteCount;
   struct node* newNode;
   bool isNewNodeAvailable;
-	struct seekRecord* mySeekRecord;
-	unsigned long pad[13];
+	//struct seekRecord* mySeekRecord;
+	unsigned long pad[14];
 };
 
 void createHeadNodes();
